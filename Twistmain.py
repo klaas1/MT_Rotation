@@ -17,7 +17,7 @@ import os
 import Tools
 import matplotlib.pyplot as plt
 
-folder = r'G:\Klaas\Tweezers\Doxo Project\2018_06_14_Doxo_4kb_constrained\DoxFOV\Dox'
+folder = r'G:\Klaas\Tweezers\Doxo Project\2018_06_15_197x25_Doxo_Constrained\CorrectedDat\FOV3'
 filenames = os.listdir(folder)
 os.chdir(folder)
 Pars = Tools.default_pars()    
@@ -40,6 +40,16 @@ for Filenum, Filename in enumerate(filenames):
     if Rotationfile and FEfile:
         for i,row in enumerate(Z_rot.T[:]):
             fig1 = plt.figure()
-            fig1.suptitle(i, y=.99)  
-            Tools.plot_sigma(Sigma,row,fig1)
-            Tools.plot_force(F,Z_ext.T[i,:],fig1)
+            fig1.suptitle('bead '+ str(i), y=.99)  
+            ax1 = fig1.add_subplot(1, 2, 1)
+            ax1.set_title('Twist')
+            ax1.set_ylabel(r'Extension')
+            ax1.set_xlabel(r'Sigma')
+            ax1.scatter(Sigma, row, color='blue', lw=0.1, s=5)
+            ax2 = fig1.add_subplot(1, 2, 2)
+            ax2.set_title('Force Extension')
+            ax2.set_ylabel('Force')
+            ax2.set_xlabel('Extension')
+            ax2.scatter(Z_ext.T[i,:], F, color='blue', lw=0.1, s=5)
+            fig1.show()
+        Rotationfile, FEfile = False, False
