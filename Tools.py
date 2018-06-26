@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Jun 14 16:36:12 2018
-
 @author: nhermans
 """
 import numpy as np
-import matplotlib.pyplot as plt
 from numpy import genfromtxt
 
 def read_dat(Filename):
@@ -28,7 +26,7 @@ def get_rotation_data(data, headers):
     """
     T = data[:,headers.index('Time (s)')]
     Rot = data[:,headers.index('Stepper rot (turns)')]
-    Z = data[:,headers.index('Z0'+' (um)')::4]
+    Z = data[:,headers.index('Z0'+' (um)')::4] * 1000
     X = data[:,headers.index('X0'+' (um)')::4]
     Y = data[:,headers.index('Y0'+' (um)')::4]
 #    T=T[Rot != 0]    
@@ -47,7 +45,7 @@ def get_force_data(data, headers):
     """
     T = data[:,headers.index('Time (s)')]
     shift = data[:,headers.index('Stepper shift (mm)')]
-    Z = data[:,headers.index('Z0'+' (um)')::4]
+    Z = data[:,headers.index('Z0'+' (um)')::4] *1000
     X = data[:,headers.index('X0'+' (um)')::4]
     Y = data[:,headers.index('Y0'+' (um)')::4]
     F = calc_force(shift)
@@ -64,7 +62,7 @@ def calc_force(i):
 def default_pars():
     """Default fitting parameters, returns a {dict} with 'key'= paramvalue"""
     par = {}
-    par['L_bp']= 4139
+    par['L_bp']= 4140
     par['P_nm'] = 50
     par['S_pN'] = 1200
     par['dsDNA_nm_bp']=0.34
@@ -80,10 +78,10 @@ def wlc(force,Pars): #in nm/pN, as fraction of L
     """Calculates WLC in nm/pN.
     Returns Z_WLC in nm"""
     f = np.array(force)
-    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*Pars['P_nm'])))+(f/Pars['S_pN'])) + Pars['z0_nm']
+    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*Pars['P_nm'])))+(f/Pars['S_pN']))
 
-def wlc_fit(f, P, S, Pars):
-    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*P))+(f/S))) + Pars['z0_nm']
+def wlc_fit(f, P, z0, Pars):
+    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*P))+(f/Pars['S_pN']))) + z0
 
 def offset_fit(f, z0, Pars):
     return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*Pars['P_nm'])))+(f/Pars['S_pN'])) + z0
