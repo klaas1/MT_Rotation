@@ -20,7 +20,11 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import numpy as np
 
-folder = r'C:\Users\Klaas\Documents\Doxo Project\2018_06_14_Doxo_4kb_constrained\CorrectedDat'
+folder = r'G:\Klaas\Tweezers\Doxo Project\2018_06_14_Doxo_4kb_constrained\CorrectedDat'
+MinFitForce = 0.3 #Force cut-off for the WLC fit in pN
+MaxFitForce = 6 #pN
+
+
 filenames = os.listdir(folder)
 os.chdir(folder)
 Pars = Tools.default_pars()    
@@ -33,44 +37,52 @@ for Filenum, Filename in enumerate(filenames):
     data, headers = Tools.read_dat(Filename)
     
     if 'Stepper rot (turns)' in headers: 
-        X,Y,Z_rot, Rot, T = Tools.get_rotation_data(data, headers)
-        Rotationfile = True
         MagnetPosition = Tools.motor_pos(Filename[:-4]+'.log', 'Shift Start (mm)')
         RotationForce = Tools.calc_force(MagnetPosition)
+        X,Y,Z_rot, Rot, T = Tools.get_rotation_data(data, headers)
         Sigma = Rot/(Pars['L_bp']/Pars['Pitch_nm'])
+        Rotationfile = Filename
     else: 
         X,Y,Z_ext, F, T = Tools.get_force_data(data, headers)
-        FEfile = True
+        FEfile = Filename
  
     if Rotationfile and FEfile and len(Z_rot.T)==len(Z_ext.T):   #only analyse when both FE and Twist are from the same FOV
         for i,row in enumerate(Z_rot.T[:]):
             Pars = Tools.default_pars() 
-            Z_fit = np.array(Z_ext.T[i,:][F>0.5]*1000)
-            F_fit = np.array(F[F>0.5])
+            if np.max(F)<MinFitForce:
+                continue
+            Z_fit = np.array(Z_ext.T[i,:])
+            F_fit = np.array(F)
+            Z_fit = Z_fit[np.all([F>MinFitForce,F<MaxFitForce], axis=0)]
+            F_fit = F_fit[np.all([F>MinFitForce,F<MaxFitForce], axis=0)]
             try: 
                 z0fit, z0fitcov = curve_fit(lambda f, z0: Tools.offset_fit(f,z0,Pars), F_fit, Z_fit, p0=[Pars['z0_nm']])
                 Pars['z0_nm'] = z0fit[0]
-                popt,pcov = curve_fit(lambda f, P, S: Tools.wlc_fit(f,P,S,Pars), F_fit, Z_fit, p0=[Pars['P_nm'],Pars['S_pN']], bounds=[[1,100],[800,1600]])
+                popt,pcov = curve_fit(lambda f, P, z0: Tools.wlc_fit(f,P,z0 ,Pars), F_fit, Z_fit, p0=[Pars['P_nm'],Pars['z0_nm']], bounds=([1,-3000],[100,8000]))
             except RuntimeError:
                 print('>>>>>>>> fit error! <<<<<<<')
                 continue
             Pars['P_nm']=popt[0]
-            Pars['S_pN']=popt[1]
-            print('Offset = ',Pars['z0_nm'], 'P = ', Pars['P_nm'], 'S = ',Pars['S_pN'])
+            Pars['z0_nm']=popt[1]
+            if Pars['P_nm'] < 35*np.sqrt(pcov[0,0]) or Pars['P_nm'] > 95 or Pars['P_nm'] < 5:
+                continue
+            print('Offset = ',Pars['z0_nm'], 'P = ', Pars['P_nm'])
             fig1 = plt.figure()
-            fig1.suptitle(Filename + '  bead ' + str(i), y=.99)  
+            fig1.suptitle('Bead ' + str(i), y=.99)  
             ax1 = fig1.add_subplot(1, 2, 1)
-            ax1.set_title('Twist')
+            ax1.set_title('Twist ' + Rotationfile[:-4])
             ax1.set_ylabel(r'Extension')
             ax1.set_xlabel(r'Sigma')
-            ax1.scatter(Sigma, row, color='blue',  s=5)
-            ax1.text(np.min(Sigma), np.max(row), 'F = '+str(round(RotationForce,2))+' pN', fontsize=12, verticalalignment='center', horizontalalignment='left')
+            ax1.set_ylim(-200, Pars['L_bp']*Pars['dsDNA_nm_bp']*1.2)
+            ax1.scatter(Sigma, row - np.min(row), color='blue',  s=5)
+            ax1.text(np.min(Sigma), Pars['L_bp']*Pars['dsDNA_nm_bp']*1.1, 'F = '+str(round(RotationForce,2))+' pN', fontsize=12, verticalalignment='center', horizontalalignment='left')
             ax2 = fig1.add_subplot(1, 2, 2)
-            ax2.set_title('Force Extension')
+            ax2.set_title('Force Extension ' + FEfile[:-4])
             ax2.set_ylabel('Force')
             ax2.set_xlabel('Extension')
             ax2.scatter(Z_ext.T[i,:], F, color='red',  s=5)
-            ax2.plot(Tools.wlc(F_fit, Pars)/1000,F_fit, color='black')  #plots the WLC
-            ax2.text(np.min(Z_fit)/1000, np.max(F), 'P = ' + str(round(Pars['P_nm'],1)) + ' nm', fontsize=12, verticalalignment='center', horizontalalignment='right')
-            fig1.show()
-        Rotationfile, FEfile = False, False
+            ax2.plot(Tools.wlc(F, Pars) + Pars['z0_nm'],F, color='black')  #plots the WLC
+            ax2.text(np.min(Z_ext.T[i,:]), np.max(F), 'P = '+str(round(Pars['P_nm'],1))+'±'+ str(round(np.sqrt(pcov[0,0]),1))+' nm', fontsize=12, verticalalignment='center', horizontalalignment='left')
+            #ax2.text(np.min(Z_ext.T[i,:]), np.max(F)/10*9, 'stdv = ' + str(round(np.sqrt(pcov[0,0]),1)), fontsize=12, verticalalignment='center', horizontalalignment='left')
+            fig1.savefig(Filename[:-4]+'_'+str(i)+'L.png')
+        #Rotationfile, FEfile = False, False
