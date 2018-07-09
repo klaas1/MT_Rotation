@@ -4,6 +4,7 @@ Created on Thu Jun 14 16:36:12 2018
 @author: nhermans
 """
 import numpy as np
+import matplotlib.pyplot as plt
 from numpy import genfromtxt
 
 def read_dat(Filename):
@@ -43,11 +44,11 @@ def get_force_data(data, headers):
         Beads = number of beads to use for averaging, default = 3
         MedianFilter = LowPass filter for applied to averaged signal, default = 5. Needs to be an odd number
     """
-    T = data[:,headers.index('Time (s)')]
-    shift = data[:,headers.index('Stepper shift (mm)')]
-    Z = data[:,headers.index('Z0'+' (um)')::4] *1000
-    X = data[:,headers.index('X0'+' (um)')::4]
-    Y = data[:,headers.index('Y0'+' (um)')::4]
+    T = np.array(data[:,headers.index('Time (s)')])
+    shift = np.array(data[:,headers.index('Stepper shift (mm)')])
+    Z = np.array(data[:,headers.index('Z0'+' (um)')::4] *1000)
+    X = np.array(data[:,headers.index('X0'+' (um)')::4])
+    Y = np.array(data[:,headers.index('Y0'+' (um)')::4])
     F = calc_force(shift)
     return X,Y,Z, F, T
 
@@ -81,7 +82,10 @@ def wlc(force,Pars): #in nm/pN, as fraction of L
     return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*Pars['P_nm'])))+(f/Pars['S_pN']))
 
 def wlc_fit(f, P, z0, Pars):
-    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*P))+(f/Pars['S_pN']))) + z0
+    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*P)))+(f/Pars['S_pN'])) + z0
+
+def ewlc_fit(f, P, S, z0, Pars):
+    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*P)))+(f/S)) + z0
 
 def offset_fit(f, z0, Pars):
     return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*Pars['P_nm'])))+(f/Pars['S_pN'])) + z0
