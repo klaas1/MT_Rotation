@@ -20,10 +20,9 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 import numpy as np
 
-folder = r'G:\Klaas\Tweezers\Doxo Project\2018_06_14_Doxo_4kb_constrained\CorrectedDat'
+folder = r'G:\Klaas\Tweezers\Doxo Project\2018_06_14_Doxo_4kb_constrained\CorrectedDat\No Doxo'
 MinFitForce = 0.3 #Force cut-off for the WLC fit in pN
 MaxFitForce = 6 #pN
-
 
 filenames = os.listdir(folder)
 os.chdir(folder)
@@ -51,20 +50,23 @@ for Filenum, Filename in enumerate(filenames):
             Pars = Tools.default_pars() 
             if np.max(F)<MinFitForce:
                 continue
-            Z_fit = np.array(Z_ext.T[i,:])
-            F_fit = np.array(F)
-            Z_fit = Z_fit[np.all([F>MinFitForce,F<MaxFitForce], axis=0)]
-            F_fit = F_fit[np.all([F>MinFitForce,F<MaxFitForce], axis=0)]
+            Z_fit = (Z_ext[:,i])[np.all([F>MinFitForce,F<MaxFitForce], axis=0)]
+            F_fit = F[np.all([F>MinFitForce,F<MaxFitForce], axis=0)]
             try: 
-                z0fit, z0fitcov = curve_fit(lambda f, z0: Tools.offset_fit(f,z0,Pars), F_fit, Z_fit, p0=[Pars['z0_nm']])
+                z0fit, z0fitcov = curve_fit(lambda f, z0: Tools.offset_fit(f,z0,Pars), F_fit, Z_fit, p0=Pars['z0_nm'], bounds=(-3000,10000))
                 Pars['z0_nm'] = z0fit[0]
-                popt,pcov = curve_fit(lambda f, P, z0: Tools.wlc_fit(f,P,z0 ,Pars), F_fit, Z_fit, p0=[Pars['P_nm'],Pars['z0_nm']], bounds=([1,-3000],[100,8000]))
+                popt,pcov = curve_fit(lambda f, P: Tools.ewlc_fit(f,P,Pars['z0_nm'],Pars['S_pN'] ,Pars), F_fit, Z_fit, p0=[Pars['P_nm']], bounds=([1],[100]))
+                Pars['P_nm']=popt[0]
+                popt_S,pcov_S = curve_fit(lambda f, S: Tools.ewlc_fit(f,Pars['P_nm'],S,Pars['z0_nm'],Pars), F_fit, Z_fit, p0=[Pars['S_pN']], bounds=([10],[10000]))
+                Pars['S_pN']=popt_S[0]
+                popt_S,pcov_S = curve_fit(lambda f,P,S,z0: Tools.ewlc_fit(f,P,S,z0,Pars), F_fit, Z_fit, p0=[Pars['P_nm'],Pars['S_pN'],Pars['z0_nm']], bounds=([1,10,-3000],[100,10000,10000]))
+                Pars['P_nm']=popt_S[0]
+                Pars['S_pN']=popt_S[1]
+                Pars['z0_nm'] = popt_S[2]
             except RuntimeError:
                 print('>>>>>>>> fit error! <<<<<<<')
                 continue
-            Pars['P_nm']=popt[0]
-            Pars['z0_nm']=popt[1]
-            if Pars['P_nm'] < 35*np.sqrt(pcov[0,0]) or Pars['P_nm'] > 95 or Pars['P_nm'] < 5:
+            if Pars['P_nm'] < 10*np.sqrt(pcov_S[0,0]) or Pars['P_nm'] > 95 or Pars['P_nm'] < 5:
                 continue
             print('Offset = ',Pars['z0_nm'], 'P = ', Pars['P_nm'])
             fig1 = plt.figure()
@@ -80,9 +82,9 @@ for Filenum, Filename in enumerate(filenames):
             ax2.set_title('Force Extension ' + FEfile[:-4])
             ax2.set_ylabel('Force')
             ax2.set_xlabel('Extension')
-            ax2.scatter(Z_ext.T[i,:], F, color='red',  s=5)
-            ax2.plot(Tools.wlc(F, Pars) + Pars['z0_nm'],F, color='black')  #plots the WLC
-            ax2.text(np.min(Z_ext.T[i,:]), np.max(F), 'P = '+str(round(Pars['P_nm'],1))+'±'+ str(round(np.sqrt(pcov[0,0]),1))+' nm', fontsize=12, verticalalignment='center', horizontalalignment='left')
+            ax2.scatter(Z_ext.T[i,:]-Pars['z0_nm'], F, color='red',  s=5)
+            ax2.plot(Tools.wlc(F, Pars),F, color='black')  #plots the WLC
+            ax2.text(np.min(Z_ext.T[i,:]-Pars['z0_nm']), np.max(F), 'P = '+str(round(Pars['P_nm'],1))+'±'+ str(round(np.sqrt(pcov_S[0,0]),1))+' nm', fontsize=12, verticalalignment='center', horizontalalignment='left')
             #ax2.text(np.min(Z_ext.T[i,:]), np.max(F)/10*9, 'stdv = ' + str(round(np.sqrt(pcov[0,0]),1)), fontsize=12, verticalalignment='center', horizontalalignment='left')
-            fig1.savefig(Filename[:-4]+'_'+str(i)+'L.png')
+            fig1.savefig(Filename[:-4]+'_'+str(i)+'.png')
         #Rotationfile, FEfile = False, False
