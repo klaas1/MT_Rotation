@@ -65,6 +65,7 @@ def calc_force(i):
 def default_pars():
     """Default fitting parameters, returns a {dict} with 'key'= paramvalue"""
     Pars = {}
+    Pars['Filename'] = ''
     Pars['L_bp']= 4140#/3*4
     Pars['P_nm'] = 50
     Pars['S_pN'] = 1200
@@ -79,9 +80,9 @@ def default_pars():
     Pars['data'] = ""  # measurement
     Pars['bead'] = ""  # bead
     Pars['beads'] = ""  # total number of beads
-    #Pars['points'] = ""  # number of data-points
-    #Pars['points_exp'] = ""  # number of expected data-points
-    #Pars['points_frac'] = ""  # fraction of data-points
+    Pars['points'] = ""  # number of data-points
+    Pars['points_exp'] = ""  # number of expected data-points
+    Pars['points_frac'] = ""  # fraction of data-points
     Pars['X0_um'] = ""  # global X-position (um)
     Pars['Y0_um'] = ""  # global Y-position (um)
     Pars['Z0_um'] = ""  # global Z-position (um)
@@ -94,9 +95,6 @@ def wlc(force,Pars): #in nm/pN, as fraction of L
     Returns Z_WLC in nm"""
     f = np.array(force)
     return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*Pars['P_nm'])))+(f/Pars['S_pN']))
-
-def wlc_fit(f, P, z0, Pars):
-    return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*P)))+(f/Pars['S_pN'])) + z0
 
 def ewlc_fit(f, P, S, z0, Pars):
     return Pars['L_bp']*Pars['dsDNA_nm_bp']*(1 - 0.5*(np.sqrt(Pars['kBT_pN_nm']/(f*P)))+(f/S)) + z0
@@ -125,7 +123,7 @@ def fit_wlc(F,Z,Pars, MinFitForce, MaxFitForce):
     return popt, pcov
     
 
-def motor_pos(LogFile, MotorName):
+def read_log(LogFile, MotorName):
     """Open the corresponding .log files from magnetic tweezers. Returns False if the file is not found"""
     try: 
         f = open(LogFile, 'r')
