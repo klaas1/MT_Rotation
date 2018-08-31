@@ -16,7 +16,7 @@ import Tools
 import matplotlib.pyplot as plt
 import numpy as np
 
-folder = r'G:\Klaas\Tweezers\Doxo Project\2018_06_14_Doxo_4kb_constrained\CorrectedDat\No Doxo'
+folder = r'G:\Klaas\Tweezers\Doxo Project\2018_08_30_dimethylDoxo_167x25\2018_08_30_dimethylDoxo_167x2_CorrectedDat'
 MinFitForce = 0.3 #Force cut-off for the WLC fit in pN
 MaxFitForce = 65 #pN
 
@@ -33,17 +33,24 @@ for Filenum, Filename in enumerate(filenames):
         continue
     data, headers = Tools.read_dat(Filename)
     
-    if 'Stepper rot (turns)' in headers: 
-        MagnetPosition = Tools.read_log(Filename[:-4]+'.log', 'Shift Start (mm)')
-        RotationForce = Tools.calc_force(MagnetPosition)
-        X_rot,Y_rot,Z_rot, Rot, T = Tools.get_rotation_data(data, headers)
-        Sigma = Rot/(Pars['L_bp']/Pars['Pitch_nm'])
-        Rotationfile = Filename
-    else: 
+    if 'Stepper rot (turns)' in headers: #Find out if file is FE or twist file
+        RotationMotor = np.array(data[:,headers.index('Stepper rot (turns)')])
+        if np.mean(RotationMotor) == 0:
+            X_ext,Y_ext,Z_ext, F, T = Tools.get_force_data(data, headers)
+            FEfile = Filename
+            Framerate = Tools.read_log(Filename[:-4]+'.log', 'Framerate (fps)')
+        else:
+            MagnetPosition = Tools.read_log(Filename[:-4]+'.log', 'Shift Start (mm)')
+            RotationForce = Tools.calc_force(MagnetPosition)
+            X_rot,Y_rot,Z_rot, Rot, T = Tools.get_rotation_data(data, headers)
+            Sigma = Rot/(Pars['L_bp']/Pars['Pitch_nm'])
+            Rotationfile = Filename
+            Framerate = Tools.read_log(Filename[:-4]+'.log', 'Framerate (fps)')
+    else:
         X_ext,Y_ext,Z_ext, F, T = Tools.get_force_data(data, headers)
         FEfile = Filename
         Framerate = Tools.read_log(Filename[:-4]+'.log', 'Framerate (fps)')
-  
+        
     if Rotationfile and FEfile and len(Z_rot.T)==len(Z_ext.T):   #only analyse when both FE and Twist are from the same FOV
         for i,row in enumerate(Z_ext.T[:]):
             Pars = Tools.default_pars() 
@@ -63,7 +70,7 @@ for Filenum, Filename in enumerate(filenames):
             if np.max(F)<MinFitForce:
                 continue
             try: popt_S,pcov_S = Tools.fit_wlc(F,row,Pars, MinFitForce, MaxFitForce)
-            except RuntimeError:
+            except:
                 print(FEfile, 'bead', i, '>>>>>>>> fit error! <<<<<<<')
                 continue
             Pars['Radius_nm'] = Tools.fit_circle(X_rot[:,i],Y_rot[:,i]) # Radius of xy rotation fit with a circle
@@ -113,13 +120,13 @@ for Filenum, Filename in enumerate(filenames):
             if np.max(F)<MinFitForce:
                 continue
             try: popt_S,pcov_S = Tools.fit_wlc(F,row,Pars, MinFitForce, MaxFitForce)
-            except RuntimeError:
+            except:
                 print(FEfile, 'bead', i, '>>>>>>>> fit error! <<<<<<<')
                 continue
             
             ###Remove bad fits:  
-            if Pars['P_nm']>50*np.sqrt(pcov_S[0,0]) or Pars['P_nm'] < 15 or Pars['P_nm'] > 150:
-                continue        
+            #if Pars['P_nm']>50*np.sqrt(pcov_S[0,0]) or Pars['P_nm'] < 15 or Pars['P_nm'] > 150:
+                #continue        
             ###Save data without duplicates
             if DataOut[-1]['Filename']!=Filename:
                 DataOut.append(Pars)
