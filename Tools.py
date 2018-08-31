@@ -4,10 +4,36 @@ Created on Thu Jun 14 16:36:12 2018
 @author: nhermans
 """
 import numpy as np
-import matplotlib.pyplot as plt
 from numpy import genfromtxt
-import json
 import pandas as pd
+    
+def default_pars():
+    """Default fitting parameters, returns a {dict} with 'key'= paramvalue"""
+    Pars = {}
+    Pars['Filename'] = ''
+    Pars['L_bp']= 7041#/3*4
+    Pars['P_nm'] = 50
+    Pars['S_pN'] = 1200
+    Pars['dsDNA_nm_bp']=0.34
+    Pars['z0_nm'] = 0
+    Pars['Pitch_nm'] = 10.4
+    Pars['MeltingTorque_pN_nm'] = 0.16
+    Pars['Torque'] = 0
+    Pars['kBT_pN_nm'] = 4.2 #pn/nm 
+    Pars['MeasurementERR (nm)'] = 5     #tracking inaccuracy in nm
+    Pars['date'] = ""  # date of measurement
+    Pars['data'] = ""  # measurement
+    Pars['bead'] = ""  # bead
+    Pars['beads'] = ""  # total number of beads
+    Pars['points'] = ""  # number of data-points
+    Pars['points_exp'] = ""  # number of expected data-points
+    Pars['points_frac'] = ""  # fraction of data-points
+    Pars['X0_um'] = ""  # global X-position (um)
+    Pars['Y0_um'] = ""  # global Y-position (um)
+    Pars['Z0_um'] = ""  # global Z-position (um)
+    Pars['dZ_um'] = ""  # absolute Z-extension after drift correction(um)
+    Pars['Radius_nm'] = "" # Radius of xy rotation fit with a circle
+    return Pars
 
 def read_dat(Filename):
     f = open(Filename, 'r')
@@ -61,34 +87,6 @@ def calc_force(i):
     l2 = 0.8  # decay length 2 (mm)
     f0 = 0.01  # force-offset (pN)
     return A * (0.7 * np.exp(-i / l1) + 0.3 * np.exp(-i / l2)) + f0
-    
-def default_pars():
-    """Default fitting parameters, returns a {dict} with 'key'= paramvalue"""
-    Pars = {}
-    Pars['Filename'] = ''
-    Pars['L_bp']= 4140#/3*4
-    Pars['P_nm'] = 50
-    Pars['S_pN'] = 1200
-    Pars['dsDNA_nm_bp']=0.34
-    Pars['z0_nm'] = 0
-    Pars['Pitch_nm'] = 10.4
-    Pars['MeltingTorque_pN_nm'] = 0.16
-    Pars['Torque'] = 0
-    Pars['kBT_pN_nm'] = 4.2 #pn/nm 
-    Pars['MeasurementERR (nm)'] = 5     #tracking inaccuracy in nm
-    Pars['date'] = ""  # date of measurement
-    Pars['data'] = ""  # measurement
-    Pars['bead'] = ""  # bead
-    Pars['beads'] = ""  # total number of beads
-    Pars['points'] = ""  # number of data-points
-    Pars['points_exp'] = ""  # number of expected data-points
-    Pars['points_frac'] = ""  # fraction of data-points
-    Pars['X0_um'] = ""  # global X-position (um)
-    Pars['Y0_um'] = ""  # global Y-position (um)
-    Pars['Z0_um'] = ""  # global Z-position (um)
-    Pars['dZ_um'] = ""  # absolute Z-extension after drift correction(um)
-    Pars['Radius_nm'] = "" # Radius of xy rotation fit with a circle
-    return Pars
 
 def wlc(force,Pars): #in nm/pN, as fraction of L
     """Calculates WLC in nm/pN.
